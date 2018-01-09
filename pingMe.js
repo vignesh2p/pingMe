@@ -76,6 +76,10 @@ app.use(session({
     
   });
   
+  app.get('/test', function(req, res) {
+    console.log('**************Welcome****************'); 
+    res.send('success');   
+    });
   
   app.post('/logout', function(req, res) {
   
