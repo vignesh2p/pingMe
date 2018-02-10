@@ -114,6 +114,21 @@ app.use(session({
     console.log('**************Welcome****************'); 
     res.send('success');   
     });
+
+    app.post('/verifyUser', function(req, res) {
+      console.log(req.body);
+      dbConn.findDocuments({"orgemail":req.body.userid},'organization',(function(response){
+        if(response.length > 0){
+          session.status == true;
+          var conditionjson = {"orgid" : response[0].orgid}    
+            conditionjson.code = "200 OK";
+            conditionjson.msg = "Verified";
+            conditionjson.data = response[0];
+            res.send(conditionjson);
+
+        }
+      }));   
+    });
   
   app.get('/test', function(req, res) {
     console.log('**************Welcome****************'); 
@@ -202,7 +217,20 @@ app.use(session({
       }));
     })
    
-    
+    app.post('/updateorg',function(req,res){
+     console.log([req.body]);
+      var setjson = req.body;
+      dbConn.updateDocument({"orgid" : req.body.orgid},setjson,'organization',(function(response){
+        console.log([response]);
+        if(response.length > 0){
+            res.send('OK');
+        }else{
+            res.send('fail');
+        }
+    }));
+    })
+
+
     app.post('/sendMail', function(req, res) {
      var toEmails = req.body.toEmails;      
      var subject = req.body.subject;

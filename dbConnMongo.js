@@ -66,16 +66,14 @@ function findDocuments(conditionjson,documents, callback) {
 		// Get the documents collection
 		const collection = db.collection(documents);
 		// Update document where a is 2, set b equal to 1
-		collection.updateOne(docidJson
-		, { $set: setJson }, function(err, result) {
-		assert.equal(err, null);
-		//assert.equal(1, result.result.n);
-		console.log("Updated the document");
-		callback(result);
-		});
-		client.close();
-	});  
-  }
+		collection.updateMany(docidJson, {$set: setJson }, function(err, res) {
+			if (err) throw err;
+			console.log(res.result.nModified + " document(s) updated");
+			client.close();
+		});  
+  });
+}
+
   module.exports={insertDocuments:insertDocuments,updateDocument:updateDocument,findDocuments:findDocuments}
 //   // Database Name
  
