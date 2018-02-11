@@ -235,9 +235,10 @@ app.use(session({
      var toEmails = req.body.toEmails;      
      var subject = req.body.subject;
      var content = req.body.content;
+     var fromMail = '"'+req.body.orgname+'"<sales@codette.in>'
       var options  = {
-      //  from: 'SUPPORT TEAM', // sender address
-        fromname:   'Codette',
+        from: fromMail, // sender address
+       // fromname:   'admin@codette.in',
         to : toEmails, // comma separated list of receivers
         subject: subject,// Subject line
         text: content// plaintext body
