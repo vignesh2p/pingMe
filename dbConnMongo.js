@@ -3,10 +3,11 @@
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 const dbconfig = require('./dbconfig');
+var mongoose = require('mongoose');
  
 // Connection URL
 const url = dbconfig.url;
- 
+mongoose.connect(url);
 // Database Name
 const dbName = dbconfig.name;
 
@@ -35,7 +36,7 @@ function findDocuments(conditionjson,documents, callback) {
 		// Use connect method to connect to the server
 		MongoClient.connect(url, function(err, client) {
 		assert.equal(null, err);
-		console.log("Connected successfully to server");
+	//	console.log("Connected successfully to server");
 		
 		const db = client.db(dbName);
 		//  Get the documents collection
@@ -44,8 +45,8 @@ function findDocuments(conditionjson,documents, callback) {
 		// Find some documents
 		collection.find(conditionjson).toArray(function(err, docs) {
 			assert.equal(err, null);
-			console.log("Found the following records");
-			console.log(docs)
+			//console.log("Found the following records");
+			//console.log(docs)
 			callback(docs);
 		});
 		client.close();
@@ -53,6 +54,61 @@ function findDocuments(conditionjson,documents, callback) {
     
   }
 
+
+function findDocumentsByProject(conditionjson, projectJson, documents, callback) {
+		
+		// Use connect method to connect to the server
+		MongoClient.connect(url, function(err, client) {
+		assert.equal(null, err);
+		console.log("Connected successfully to server");
+		
+		const db = client.db(dbName);
+		//  Get the documents collection
+		const collection = db.collection(documents);
+			
+		// Find some documents
+		collection.find(conditionjson).project(projectJson).toArray(function(err, docs) {
+			assert.equal(err, null);
+			callback(docs);
+		});
+
+		client.close();
+		});
+    
+  }
+
+  
+
+function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
+		
+	// Use connect method to connect to the server
+	MongoClient.connect(url, function(err, client) {
+	assert.equal(null, err);
+	console.log("Connected successfully to server");
+	const db = client.db(dbName);
+	const collection = db.collection(document);
+	collection.aggregate([
+	  { $lookup:
+		 {
+		   from: aggregateJson.from,
+		   localField: aggregateJson.localField,
+		   foreignField: aggregateJson.foreignField,
+		   as: aggregateJson.as
+		 }
+	   },
+	   {
+		  $match: conditionjson
+	   }
+	  ]).toArray(function(err, res) {
+	  if (err) { 
+	  	console.log(err);
+	  	throw err;}
+	  callback(res);
+	});
+	client.close();
+	});
+
+}
 
   
   function updateDocument(docidJson,setJson,documents, callback) {
@@ -69,53 +125,67 @@ function findDocuments(conditionjson,documents, callback) {
 		collection.updateMany(docidJson, {$set: setJson }, function(err, res) {
 			if (err) throw err;
 			console.log(res.result.nModified + " document(s) updated");
+			callback(res.result);
 			client.close();
 		});  
   });
 }
 
-  module.exports={insertDocuments:insertDocuments,updateDocument:updateDocument,findDocuments:findDocuments}
-//   // Database Name
- 
-// // Use connect method to connect to the server
-// MongoClient.connect(url, function(err, client) {
-//   assert.equal(null, err);
-//   console.log("Connected correctly to server");
- 
-//   const db = client.db(dbName);
- 
-//   insertDocuments(db, function() {
-//     findDocuments(db, function() {
-//       client.close();
-//     });
-//   });
-// });
+function updatePushDocument(queryJson,pushJson,documents, callback) {
+	// Use connect method to connect to the server
+MongoClient.connect(url, function(err, client) {
+//	assert.equal(null, err);
+	console.log("Connected successfully to server");
+
+	const db = client.db(dbName);
+
+	// Get the documents collection
+	const collection = db.collection(documents);
+	// Update document where a is 2, set b equal to 1
+	collection.update(queryJson, {$push: pushJson }, function(err, res) {
+		if (err) throw err;
+		console.log(res.result.nModified + " document(s) updated");
+		callback(res.result);
+		client.close();
+	});  
+});
+}
 
 
+function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
+		
+	// Use connect method to connect to the server
+	MongoClient.connect(url, function(err, client) {
+	assert.equal(null, err);
+	console.log("Connected successfully to server");
+	const db = client.db(dbName);
+	const collection = db.collection(document);
+	collection.aggregate([
+	  { $lookup:
+		 {
+		   from: aggregateJson.from,
+		   localField: aggregateJson.localField,
+		   foreignField: aggregateJson.foreignField,
+		   as: aggregateJson.as
+		 }
+	   },
+   {
+      $match: conditionjson
+   }
+	  ]).toArray(function(err, res) {
+	  if (err) throw err;
+	  callback(res);
+	});
+	client.close();
+	});
 
-// const findDocuments = function(db, callback) {
-//     // Get the documents collection
-//     const collection = db.collection('documents');
-//     // Find some documents
-//     collection.find({'a': 3}).toArray(function(err, docs) {
-//       assert.equal(err, null);
-//       console.log("Found the following records");
-//       console.log(docs);
-//       callback(docs);
-//     });
-//   }
+}
 
-
-
-//   const updateDocument = function(db, callback) {
-//     // Get the documents collection
-//     const collection = db.collection('documents');
-//     // Update document where a is 2, set b equal to 1
-//     collection.updateOne({ a : 2 }
-//       , { $set: { b : 1 } }, function(err, result) {
-//       assert.equal(err, null);
-//       assert.equal(1, result.result.n);
-//       console.log("Updated the document with the field a equal to 2");
-//       callback(result);
-//     });  
-//   }
+  module.exports={
+	insertDocuments : insertDocuments,
+	updateDocument : updateDocument,
+	findDocuments : findDocuments, 
+	findDocumentsByJoin : findDocumentsByJoin,
+	updatePushDocument : updatePushDocument,
+	findDocumentsByProject : findDocumentsByProject
+}
