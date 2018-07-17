@@ -620,7 +620,7 @@ res.send(genres.path)
               
                 app.post('/rateAndReview', function (req, res) {
                 
-                console.log(req.body);
+              //  console.log(req.body);
 
                 var reviewJson =req.body;
                 reviewJson.rating = parseFloat(reviewJson.rating);
@@ -635,26 +635,34 @@ res.send(genres.path)
                 dbConn.updatePushDocument(conditionjson, {"reviews":reviewJson},table, (function(response){
                   // if(response.length > 0) {
                   
-                  console.log(req.body);
+                 // console.log(req.body);
                   dbConn.findDocuments(conditionjson,table,(function(response){
                   var ratings;
-                 // console.log(response);
+                  var rat = 0;
+                   // console.log('rating-------------------------------'+response);
                     if(response.length > 0) {
-                      if(response[0].rating){
-                        ratings = (response[0].rating + reviewJson.ratings)/2;
+                      if(response[0].reviews != undefined){
+                         for(var i=0; i< response[0].reviews.length; i++) {
+                           rat = rat + parseFloat(response[0].reviews[i].ratings);
+                           if(i == response[0].reviews.length-1) {
+                              rat = rat / response[0].reviews.length;
+                               var setjson = {"rating": rat}
+                               console.log(setjson);
+                               dbConn.updateDocument(conditionjson,setjson,table,(function(response){
+                                  console.log(response);
+                                  
+                              }));
+                           }
+                         }
                       } else {
-                         ratings = reviewJson.ratings
+                        var setjson = {"rating": reviewJson.ratings};
+                         console.log(setjson);
+                         dbConn.updateDocument(conditionjson,setjson,table,(function(response){
+                            console.log(response);
+                            
+                              }));
                       }
-                      var setjson = {"rating": ratings}
-                      console.log(setjson);
-                      console.log(conditionjson);
-                       dbConn.updateDocument(conditionjson,setjson,table,(function(response){
-                          console.log(response);
-                          
-                      }));
-                      
-                      
-                    }
+                  }
                 })); 
                 res.send(response);
 
@@ -1031,10 +1039,16 @@ res.send(genres.path)
         
         
         app.post('/saveOrder', function (req, res) {
-          
+            var date = new Date();
             var order = JSON.parse(req.body.order);
             var useremail = order.useremail;
             console.log(order);
+            var shiipp= {
+              "mMessage": "Order placed successfully",
+              "mDate": date.toISOString().replace(/T/, ' ').replace(/\..+/, ''),
+              "timestamp": date
+            }
+            order.shippings = [shiipp];
             var conditionjson = { useremail : useremail };
            dbConn.insertDocuments([order],'orders',(function(response) {
               var setJson = {"cart"  : []};
@@ -1053,8 +1067,13 @@ res.send(genres.path)
                  conditionjson.userid = req.body.userid;
             if(req.body.useremail)
                  conditionjson.useremail = req.body.useremail;
+            if(req.body.status)
+                conditionjson.status =  { "$in":req.body.status.split(',')};
+            if(req.body.id)
+                conditionjson.id = req.body.id;
+            
             dbConn.findDocuments(conditionjson,'orders',function(response){
-              if(response.length > 0){
+              if(response.length > 0) {
                  res.send(response);
               } else
                  res.send([]);
@@ -1083,7 +1102,28 @@ res.send(genres.path)
               var url_parts = url.parse(req.url, true);
               var query = url_parts.query;
               console.log(query);
-             distance.get(
+              if(query.orgId != null ) {
+                var conditionjson = {};
+                conditionjson.orgid = query.orgId;
+               dbConn.findDocuments(conditionjson,'organization',(function(response){
+                    if(response.length > 0) {
+                        var org = response[0];
+                         console.log(org);
+                         distance.get(
+                          {
+                            index: 1,
+                            origin: org.orgLat+','+org.orgLon ,
+                            destination: query.lat2+','+query.lon2
+                          },
+                          function(err, data) {
+                            if (err) return console.log(err);
+                            console.log(data);
+                            res.send(data);
+                          });
+                    }
+                }))
+              } else {
+                    distance.get(
                     {
                       index: 1,
                       origin: query.lat1+','+query.lon1 ,
@@ -1094,6 +1134,9 @@ res.send(genres.path)
                       console.log(data);
                       res.send(data);
                     });
+              }
+              
+                    
               
           })
         
@@ -1107,5 +1150,76 @@ res.send(genres.path)
                  res.send({});
             }
             );
+            
+          })
+          
+           app.post('/order/:id/update', function (req, res) {
+              var orderid = req.params.id;
+              console.log(req.body);
+              var shippings;
+              var setJson={};
+              dbConn.findDocuments({id: orderid},'orders',function(response){
+                if(response.length > 0) {
+                   var order = response[0];
+                   var status = order.status;
+                   if(order.shippings) {
+                     shippings = order.shippings;
+                   } else{
+                     shippings=[];
+                   }
+                   var shipp = {};
+                   var d = new Date();
+                   var date = d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+                   if(req.body.status == 'A' )
+                   {
+                     shipp.mMessage= 'Order confirmed by seller';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status ='A';
+                   } else if(req.body.status =='R')
+                   {
+                     shipp.mMessage= 'Order rejected by seller';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status ='R';
+                   } else if(req.body.status =='Y') {
+                     shipp.mMessage= 'Packed, Yet to dispatch';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status = req.body.status;
+                   } else if(req.body.status =='D') {
+                     shipp.mMessage= 'Delivered';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status =  req.body.status;
+                   } else if(req.body.status =='DI') {
+                     shipp.mMessage= 'Dispatched, Delivery by '+(req.body.isGeoubuyDelivery == 'true' ? 'Geobuy':'Store');
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     setJson.isGeoubuyDelivery =  (req.body.isGeoubuyDelivery == 'true');
+                     shippings.push(shipp);
+                     status =  req.body.status;
+                   } else if(req.body.status =='RP') {
+                     shipp.mMessage= 'Ready for pickup';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status =  req.body.status;
+                   }
+                   setJson = {'shippings' : shippings};
+                   setJson.status = status;
+                   dbConn.updateDocument({id: orderid},setJson,'orders',function(respo){
+                            res.send('OK');
+                  });
+                } 
+              }
+             );
+             
+            
+            
             
           })
