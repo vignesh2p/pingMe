@@ -24,6 +24,9 @@ var routes = require('./imagefile');
 var stringSimilarity = require('string-similarity');
 var url = require('url');
 var distance = require('google-distance');
+var sleep = require('thread-sleep');
+var arraySort = require('array-sort');
+var moment = require('moment-timezone');
 
 app.use('/', routes);
 
@@ -117,11 +120,11 @@ res.send(genres.path)
   var server = app.listen(8080, function () {
   var host = server.address().address
   var port = server.address().port
-  console.log("Example app listening at http:"+host+":"+port)
+  log("Example app listening at http:"+host+":"+port)
  })
 
   app.post('/login', function(req, res) {
-    console.log([req.body]);
+    traceLog([req.body]);
     dbConn.findDocuments({"orgemail":req.body.orgemail,"password":req.body.password},'organization',(function(response){
       if(response.length > 0){
         session.status == true;
@@ -147,12 +150,12 @@ res.send(genres.path)
   });
   
   app.get('/', function(req, res) {
-    console.log('**************Welcome****************'); 
+    log('**************Welcome****************'); 
     res.send('success');   
     });
 
   app.post('/verifyUser', function(req, res) {
-      console.log(req.body);
+      traceLog(req.body);
       dbConn.findDocuments({"orgemail":req.body.userid},'organization',(function(response){
         if(response.length > 0){
           session.status == true;
@@ -167,7 +170,7 @@ res.send(genres.path)
   });
   
   app.get('/test', function(req, res) {
-    console.log('**************Welcome****************'); 
+    log('**************Welcome****************'); 
     res.send('success');   
   });
   
@@ -213,7 +216,7 @@ res.send(genres.path)
             orgJson.orgLat= parseFloat(req.body.orgLat);
             orgJson.orgLon= parseFloat(req.body.orgLon);
             dbConn.insertDocuments([orgJson],'organization',(function(response){
-            console.log(response);
+            traceLog(response);
             if(response.result != undefined) {
               var toEmails = 'viki19nesh@gmail.com';      
               var subject = 'Please confirm store registration with Codette';
@@ -226,7 +229,7 @@ res.send(genres.path)
                  subject: subject,// Subject line
                  text: content// plaintext body
                }
-               console.log(req.body);
+               traceLog(req.body);
                mailService.sendmail(options);
 
               var conditionjson = {"code" : "200 OK", "msg" : "Registered Sucessfuly"}
@@ -247,9 +250,9 @@ res.send(genres.path)
     
     
     app.post('/savedetails',function(req,res){
-      console.log([req.body]);
+      log([req.body]);
       dbConn.findDocuments({"orgid" : req.body.orgid},'organization-data',(function(response){ 
-        console.log(response); 
+        traceLog(response); 
         if(response.length > 0){ 
           var setjson = req.body;
           delete setjson['orgid'];
@@ -273,12 +276,12 @@ res.send(genres.path)
     })
    
     app.post('/updateorg',function(req,res){
-     console.log([req.body]);
+     traceLog([req.body]);
       var setjson = req.body;
       setjson.orgLat = parseFloat(setjson.orgLat);
       setjson.orgLon = parseFloat(setjson.orgLon);
       dbConn.updateDocument({"orgid" : req.body.orgid},setjson,'organization',(function(response){
-        console.log([response]);
+        traceLog([response]);
         if(response.length > 0){
             res.send('OK');
         }else{
@@ -300,7 +303,7 @@ res.send(genres.path)
         subject: subject,// Subject line
         text: content// plaintext body
       }
-      console.log(req.body);
+      traceLog(req.body);
       mailService.sendmail(options);
       var conditionjson = {}
       conditionjson.code="200 Ok";
@@ -309,7 +312,7 @@ res.send(genres.path)
       });
     
       app.post('/products', function (req, res) {
-        console.log(req.body);
+        traceLog(req.body);
         /*dbConn.findDocuments({"orgid":req.body.orgid},'organization-products',(function(response){
           console.log('response.length--------'+response.length);
           if(response.length > 0){
@@ -330,7 +333,7 @@ res.send(genres.path)
             aggregateJson.as = 'productDetails';
             var conditionJson = {"orgid":req.body.orgid};
             dbConn.findDocumentsByJoin( 'organization-products', aggregateJson, conditionJson ,function(resp){
-                       console.log(resp)
+                       traceLog(resp)
                     if(resp.length > 0) {
                         res.send(resp);
                     }else{
@@ -357,9 +360,8 @@ res.send(genres.path)
 
       app.post('/receipts', function (req, res) {
         // console.log(req.body);
-        console.log(req.body);
+        traceLog(req.body);
         dbConn.findDocuments({"orgid":req.body.orgid},'products',(function(response){
-          console.log('response.length--------'+response.length);
           if(response.length > 0){
             session.status == true;
             var conditionjson = {"orgid" : response[0].orgid}    
@@ -376,13 +378,13 @@ res.send(genres.path)
        
        
       app.post('/storesByPosition', function (req, res) {
-        console.log(req.body);
+        //traceLog(req.body);
         var param = {}
         param.maxlattitude= parseFloat(req.body.maxlattitude);
         param.minlattitude= parseFloat(req.body.minlattitude);
         param.maxlongitude= parseFloat(req.body.maxlongitude);
         param.minlongitude= parseFloat(req.body.minlongitude);
-        console.log(param);
+        traceLog(param);
         var conditionJson = {"orgLat":{$lt:param.maxlattitude, $gt:param.minlattitude },"orgLon":{$lt:param.maxlongitude, $gt:param.minlongitude} };
         var aggregateJson ={};
         aggregateJson.from = 'organization-products';
@@ -390,7 +392,7 @@ res.send(genres.path)
         aggregateJson.foreignField = 'orgid';
         aggregateJson.as = 'products';
         dbConn.findDocumentsByJoin( 'organization', aggregateJson, conditionJson ,function(resp){
-                       console.log(resp)
+                       traceLog(resp)
                     if(resp.length > 0) {
                         var conditionjson = {}    
                         conditionjson.code = "200 OK";
@@ -439,37 +441,57 @@ res.send(genres.path)
        app.get('/categories', function (req, res) {
        var queryJson = req.body;
       // queryJson.isBanner = (queryJson.isBanner == 'true');
-       console.log(queryJson);
-       dbConn.findDocuments(queryJson,'category',(function(response){
-        console.log('response.length--------'+response.length);
+        log(queryJson);
+        queryJson.status = 1;
+        var aggregateJson ={};
+        aggregateJson.from = 'sub-category';
+        aggregateJson.localField = 'id';
+        aggregateJson.foreignField = 'category';
+        aggregateJson.as = 'subcategory';
+        dbConn.findDocumentsByJoin('category',aggregateJson, queryJson, function (response) {
           if(response.length > 0){
             session.status == true;
             var conditionjson = {}    
               conditionjson.code = "200 OK";
               conditionjson.msg = "Verified";
-              conditionjson.data = response;
+              conditionjson.data = arraySort(response, 'gpriority', {reverse: true});
               res.send(conditionjson);
           }
-        }));  
-       
+        });
        })
        
        
        app.get('/brands', function (req, res) {
-       dbConn.findDocuments({},'brands',(function(response){
-        console.log('response.length--------'+response.length);
-          if(response.length > 0){
-              res.send(response);
-          } else {
-            res.send([]);
-          }
-        }));  
-       
+         var url_parts = url.parse(req.url, true);
+         var param = url_parts.query;
+         if(param.subcategory) {
+           dbConn.findDistinctDocuments('brand', {subcategory: param.subcategory}, 'organization-products', 
+           function(response) {
+              if(response){
+                  var brands = response;
+                  dbConn.findDocuments({ "id" : {"$in": brands}},'brands',(function(response){
+                      if(response.length > 0){
+                          log(response);
+                          res.send(response);
+                      } else {
+                        res.send([]);
+                      }
+                    })); 
+              }
+           });
+         } else {
+                 dbConn.findDocuments({},'brands',(function(response){
+                    if(response.length > 0){
+                        res.send(response);
+                    } else {
+                      res.send([]);
+                    }
+                  })); 
+         }
        })
 
        app.get('/categorymaster', function (req, res) {
-        dbConn.findDocuments({},'category-master',(function(response){
-         console.log('response.length--------'+response.length);
+        dbConn.findDocuments({"status" : 1},'category-master',(function(response){
            if(response.length > 0){
              session.status == true;
              res.send(response);
@@ -485,7 +507,7 @@ res.send(genres.path)
             aggregateJson.foreignField = 'masterid';
             aggregateJson.as = 'productDetails';
             dbConn.findDocumentsByJoin( 'trendings', aggregateJson, {} ,function(resp){
-                       console.log(resp)
+                       traceLog(resp)
                     if(resp.length > 0) {
                         res.send(resp);
                     }else{
@@ -505,7 +527,7 @@ res.send(genres.path)
             aggregateJson.foreignField = 'masterid';
             aggregateJson.as = 'productDetails';
             var conditionjson = { };
-            conditionjson.searchkey= {$regex:searchKey,$options:"$i"}
+            conditionjson.text = {$regex:searchKey,$options:"$i"}
             if(req.body.maxlattitude)
             {
                 param.maxlattitude= parseFloat(req.body.maxlattitude);
@@ -531,18 +553,26 @@ res.send(genres.path)
                   orIds.push(org.orgid);
                   i++;
                   if(response.length == i){
-                     console.log(orIds);
-                    
-                    conditionjson.productDetails = { $elemMatch: { orgid: { "$in": orIds } } };
-                    dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,function(resp){
-                       console.log(resp)
+                     traceLog(orIds);
+                      conditionjson.orgid= { "$in": orIds } ;
+                   // conditionjson.productDetails = { $elemMatch: { orgid: { "$in": orIds } } };
+                    /*dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,function(resp){
+                       traceLog(resp)
                     if(resp.length > 0) {
                         res.send(resp);
                     }else{
                       res.send([]);
                     }
                     
-                    });
+                    });*/
+                     dbConn.findDocuments(conditionjson,  'geobuy-search', function(resp){
+                          if(resp.length > 0) {
+                              res.send(resp);
+                          } else {
+                            res.send([]);
+                          }
+                     });
+                    
                   }
                   },this);
               
@@ -552,23 +582,31 @@ res.send(genres.path)
               })); 
             } else {
               
-              console.log(conditionjson);
-              dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,function(resp){
-                       console.log(resp)
+              log(conditionjson);
+             /* dbConn.findDocumentsByJoin( 'geobuy-search', aggregateJson, conditionjson ,function(resp){
+                       traceLog(resp)
                     if(resp.length > 0) {
                         res.send(resp);
                     } else {
                       res.send([]);
                     }
                     
-                    });
+                    });*/
+                    
+                    dbConn.findDocuments(conditionjson,  'geobuy-search', function(resp){
+                          if(resp.length > 0) {
+                              res.send(resp);
+                          } else {
+                            res.send([]);
+                          }
+                     });
             }
            
             })
 
             app.post('/orgsSearch', function (req, res) {
 
-              console.log('searchKey :: '+searchKey);
+              traceLog('searchKey :: '+searchKey);
               var searchKey = req.body.searchkey;
               var param = {}
               var conditionjson ={}
@@ -587,7 +625,7 @@ res.send(genres.path)
                                           };
               }
               conditionjson.orgname =  {$regex:searchKey,$options:"$i"};
-              console.log(param);
+              log(param);
               dbConn.findDocuments(conditionjson,'organization',(function(response){
                 if(response.length > 0) {
                   res.send(response);
@@ -599,7 +637,7 @@ res.send(genres.path)
              // findDocumentsByJoin('organization-products', aggregateJson, conditionjson, function(res){console.log(res);});
 
                app.post('/productDetails', function (req, res) {
-                  console.log(req.body);
+                  traceLog(req.body);
                   var aggregateJson ={};
                   aggregateJson.from = 'organization-products';
                   aggregateJson.localField = 'id';
@@ -647,18 +685,18 @@ res.send(genres.path)
                            if(i == response[0].reviews.length-1) {
                               rat = rat / response[0].reviews.length;
                                var setjson = {"rating": rat}
-                               console.log(setjson);
+                               traceLog(setjson);
                                dbConn.updateDocument(conditionjson,setjson,table,(function(response){
-                                  console.log(response);
+                                  traceLog(response);
                                   
                               }));
                            }
                          }
                       } else {
                         var setjson = {"rating": reviewJson.ratings};
-                         console.log(setjson);
+                         traceLog(setjson);
                          dbConn.updateDocument(conditionjson,setjson,table,(function(response){
-                            console.log(response);
+                            traceLog(response);
                             
                               }));
                       }
@@ -671,19 +709,27 @@ res.send(genres.path)
             
             
               app.post('/getProductsByCategory', function (req, res) {
-                  console.log(req.body);
+                  log(req.body);
                   var aggregateJson ={};
                   aggregateJson.from = 'organization-products';
                   aggregateJson.localField = 'id';
                   aggregateJson.foreignField = 'masterid';
                   aggregateJson.as = 'productDetails';
                   var conditionjson = { };
-                  if(req.body.category) {
+                  if(req.body.category) 
                     conditionjson.category = req.body.category;
-                  }
-                  if(req.body.productIds){
+                  
+                  if(req.body.subcategory)
+                    conditionjson.subcategory= req.body.subcategory;
+                    
+                  if(req.body.brand)
+                    conditionjson.brand = { "$in": req.body.brand.split(',') };
+                  
+                  
+                  if(req.body.productIds)
                      conditionjson.id = { "$in": req.body.productIds }
-                  }
+                  traceLog(conditionjson);
+                  
                   dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,(function(response){
                   if(response.length > 0) {
                       res.send(response);
@@ -693,7 +739,7 @@ res.send(genres.path)
               })
               
               app.post('/getProductsByBrandAndCategory', function (req, res) {
-                  console.log(req.body);
+                  log(req.body);
                   var conditionjson = {};
                   if(req.body.category)
                     conditionjson.category = req.body.category;
@@ -712,7 +758,7 @@ res.send(genres.path)
               })
               
               app.post('/saveProduct', function (req, res) {
-                  console.log(req.body.product);
+                  log(req.body.product);
                   var reqJson ={};
                  
                   res.send([]);
@@ -733,10 +779,13 @@ res.send(genres.path)
                         conditionjson = {};
                         projectJson = {id: 1, title:1 };
                         var productId;
-                        if(reqJson.ean) {
-                          conditionjson.ean = reqJson.ean;
+                        if(reqJson.ean || reqJson.masterid) {
+                          if(reqJson.ean)
+                              conditionjson.ean = reqJson.ean;
+                          else
+                              conditionjson.masterid = reqJson.masterid;
                           dbConn.findDocumentsByProject( conditionjson , projectJson, 'products', function(productresp) {
-                          console.log(productresp);
+                          traceLog(productresp);
                           
                             if(productresp.length > 0) {
                                   productId = uuid();
@@ -771,13 +820,13 @@ res.send(genres.path)
               
           function insertDoc(brandJson, collection){
              dbConn.insertDocuments([brandJson],collection,function(response) {
-                 console.log(response);
+                 traceLog(response);
              });
           }
           
           
           app.post('/syncUser', function (req, res) {
-                  console.log(req.body);
+                  log(req.body);
                   var reqJson = req.body;
                   var conditionjson = {"useremail" : reqJson.useremail };
                   dbConn.findDocuments(conditionjson,'users',(function(response){
@@ -798,7 +847,7 @@ res.send(genres.path)
               
               
         app.post('/followOrg', function (req, res) {
-          console.log(req.body);
+          log(req.body);
           var conditionjson = { "orgid" :req.body.orgid};
           var follower =  req.body.follower;
           if(req.body.follow == 'true') {
@@ -814,7 +863,7 @@ res.send(genres.path)
                 dbConn.findDocuments(conditionjson,'organization',(function(response) {
                   if(response.length > 0) {
                       followers = response[0].followers;
-                      console.log('followers '+followers);
+                      traceLog('followers '+followers);
                       for(var i=0; i<followers.length; i++){
                         if(followers.length > 0) {
                           if(follower != followers[i]) {
@@ -840,15 +889,15 @@ res.send(genres.path)
            
         })
         
-        app.post('/orgDetails', function (req, res) {
-        var conditionJson = {"orgid": req.body.orgid };
+        app.get('/org/:orgid', function (req, res) {
+        var conditionJson = {"orgid": req.params.orgid };
         var aggregateJson ={};
         aggregateJson.from = 'organization-products';
         aggregateJson.localField = 'orgid';
         aggregateJson.foreignField = 'orgid';
         aggregateJson.as = 'products';
         dbConn.findDocumentsByJoin( 'organization', aggregateJson, conditionJson ,function(resp){
-            console.log(resp)
+            traceLog(resp)
             if(resp.length > 0) {
                   res.send(resp[0]);
             } else {
@@ -860,12 +909,12 @@ res.send(genres.path)
         
         app.post('/addToCart', function (req, res) {
               var conditionjson ={ "useremail": req.body.useremail };
-               
-              var product = JSON.parse(req.body.cart);
-              console.log(product);
-              dbConn.findDocuments(conditionjson,'users',function(response){
+              if(req.body.cart) {
+                var product = JSON.parse(req.body.cart);
+                log(product);
+                dbConn.findDocuments(conditionjson,'users',function(response){
                 if(response.length > 0) {
-                  console.log(response[0]);
+                  traceLog(response[0]);
                   var user = response[0];
                   var cart;
                   if(user.cart)
@@ -887,15 +936,21 @@ res.send(genres.path)
                     cart.push(product);
                   
                   var setJson = { "cart" : cart };
-                  console.log(setJson);
+                  traceLog(setJson);
                   dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
                           res.send(respons);
                   }));
                     
-                }
-              }); 
-              
-              
+                  }
+                }); 
+              } else {
+                var wishlist = req.body.wishlist;
+                var setJson ={wishlist : wishlist};
+                traceLog(setJson);
+                dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
+                          res.send(respons);
+                  }));
+              }
         })
         
         //
@@ -904,7 +959,7 @@ res.send(genres.path)
               var useremail = req.body.useremail;
               var products = req.body.products;
               var prodIdArry = products.split(',') ;
-              console.log(prodIdArry);
+              traceLog(prodIdArry);
               var aggregateJson ={};
               aggregateJson.from = 'organization-products';
               aggregateJson.localField = 'cart.id';
@@ -912,14 +967,13 @@ res.send(genres.path)
               aggregateJson.as = 'products';
               var conditionjson = {"useremail" : useremail};
               dbConn.findDocumentsByJoin( 'users', aggregateJson, conditionjson ,function(resp){
-              console.log(resp)
+              traceLog(resp)
                   if(resp.length > 0) {
                         res.send(resp[0]);
                   } else {
                         res.send([]);
                   }
               });
-              
               /*var conditionjson = { "id": { "$in": prodIdArry} };
               
               
@@ -930,6 +984,39 @@ res.send(genres.path)
               }); */
         })
         
+        
+        app.get('/products', function (req, res) {
+                 var url_parts = url.parse(req.url, true);
+                  var query = url_parts.query;
+                  log(query);
+                  var aggregateJson ={};
+                  aggregateJson.from = 'organization-products';
+                  aggregateJson.localField = 'masterid';
+                  aggregateJson.foreignField = 'masterid';
+                  aggregateJson.as = 'productDetails';
+                  var conditionjson = { };
+                  if(query.category) 
+                    conditionjson.category = req.body.category;
+                  
+                  if(query.subcategory)
+                    conditionjson.subcategory= req.body.subcategory;
+                    
+                  if(query.brand)
+                    conditionjson.brand= req.body.brand;
+                  
+                  
+                  if(query.products)
+                     conditionjson.id = { "$in": query.products.split(',') }
+                  traceLog(conditionjson);
+                  
+                  dbConn.findDocumentsByJoin( 'organization-products', aggregateJson, conditionjson ,(function(response){
+                    traceLog(response);
+                  if(response.length > 0) {
+                      res.send(response);
+                  } else
+                     res.send([]);
+                  })); 
+              })
         
         app.get('/banners', function (req, res) {
               var url_parts = url.parse(req.url, true);
@@ -950,7 +1037,7 @@ res.send(genres.path)
                       ]
                  }
                  
-                 console.log(conditionjson);
+                 log(conditionjson);
                //  conditionjson = {"lat":{$lt:param.maxlattitude, $gt:param.minlattitude },"lon":{$lt:param.maxlongitude, $gt:param.minlongitude} };
               }
               dbConn.findDocuments(conditionjson,'banners',function(response){
@@ -979,7 +1066,7 @@ res.send(genres.path)
                     
                     if(i==(addressArr.length-1)) {
                       var setJson = {address : newAddress };
-                          console.log(setJson);
+                          traceLog(setJson);
                           dbConn.updateDocument(conditionjson,setJson,'users',(function(respo){
                             //res.send(respo);
                             
@@ -1015,7 +1102,7 @@ res.send(genres.path)
                             addressArr[addressArr.length] = address;
                           
                           var setJson = {address : addressArr };
-                          console.log(setJson);
+                          traceLog(setJson);
                           dbConn.updateDocument(conditionjson,setJson,'users',(function(respo){
                             //res.send(respo);
                           }));
@@ -1026,7 +1113,7 @@ res.send(genres.path)
                       dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
                         //res.send(respons);
                       }));
-                       console.log(setJson);
+                       traceLog(setJson);
                   }
                }
               res.send("Sucesss");
@@ -1039,23 +1126,54 @@ res.send(genres.path)
         
         
         app.post('/saveOrder', function (req, res) {
+            var orders = [];
             var date = new Date();
             var order = JSON.parse(req.body.order);
+             
             var useremail = order.useremail;
-            console.log(order);
-            var shiipp= {
-              "mMessage": "Order placed successfully",
-              "mDate": date.toISOString().replace(/T/, ' ').replace(/\..+/, ''),
-              "timestamp": date
+            var products = order.products;
+            //  delete order['products'];
+            var momtz = moment(date);
+            for(var j=0; j< products.length; j++) {
+               var product = products[j];
+                var shiipp= {
+                  "mMessage": "Order placed successfully",
+                  "mDate": momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a'),
+                  "timestamp": date
+                }
+                shiipp.id = products[j].id;
+                var orderItem = order;
+                //orderItem.products =[];
+                orderItem.shippings =[];
+                orderItem.shippings.push(shiipp);
+                orderItem.id= uuid();
+                orderItem.ordertime = date;
+              //  orderItem.products.push(product);
+                orders[j] = orderItem;
+                //console.log(orderItem.id);
+                traceLog(orderItem);
+                if(j == products.length-1) {
+                  
+                //  orders.forEach((item) => {
+                    
+                    dbConn.insertDocuments([orderItem],'orders',(function(response) {
+                     // var setJson = {"cart"  : []};
+                     // dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
+                        res.send("OK")
+                     // }));
+                    
+                  })); 
+                //  sleep(5000);
+                //  
+                //  });
+                  
+                  
+             //     traceLog('************************************');
+                 
+                //  console.log(orders);
+                }
             }
-            order.shippings = [shiipp];
-            var conditionjson = { useremail : useremail };
-           dbConn.insertDocuments([order],'orders',(function(response) {
-              var setJson = {"cart"  : []};
-              dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
-                res.send("OK")
-              }));
-          }));  
+           
             
         })
         
@@ -1074,7 +1192,8 @@ res.send(genres.path)
             
             dbConn.findDocuments(conditionjson,'orders',function(response){
               if(response.length > 0) {
-                 res.send(response);
+                 var resp = arraySort(response, 'ordertime', {reverse: true});
+                 res.send(resp);
               } else
                  res.send([]);
             }
@@ -1101,14 +1220,14 @@ res.send(genres.path)
          app.get('/getDistance', function (req, res) {
               var url_parts = url.parse(req.url, true);
               var query = url_parts.query;
-              console.log(query);
+              traceLog(query);
               if(query.orgId != null ) {
                 var conditionjson = {};
                 conditionjson.orgid = query.orgId;
                dbConn.findDocuments(conditionjson,'organization',(function(response){
                     if(response.length > 0) {
                         var org = response[0];
-                         console.log(org);
+                         traceLog(org);
                          distance.get(
                           {
                             index: 1,
@@ -1117,7 +1236,7 @@ res.send(genres.path)
                           },
                           function(err, data) {
                             if (err) return console.log(err);
-                            console.log(data);
+                            log(data);
                             res.send(data);
                           });
                     }
@@ -1131,7 +1250,7 @@ res.send(genres.path)
                     },
                     function(err, data) {
                       if (err) return console.log(err);
-                      console.log(data);
+                      log(data);
                       res.send(data);
                     });
               }
@@ -1142,7 +1261,7 @@ res.send(genres.path)
         
         
          app.get('/order/:id', function (req, res) {
-              console.log(req.params);
+              log(req.params);
                dbConn.findDocuments(req.params,'orders',function(response){
               if(response.length > 0) {
                  res.send(response[0]);
@@ -1152,6 +1271,42 @@ res.send(genres.path)
             );
             
           })
+          
+          app.get('/notifications', function (req, res) {
+              var topic = req.params.topic;
+              var conditionJson ={};
+               dbConn.findDocuments(conditionJson,'notifications',function(response){
+              if(response.length > 0) {
+                 res.send(response);
+              } else
+                 res.send({});
+            }
+            );
+            
+          })
+          
+          
+           app.post('/product/:id/update', function (req, res) {
+              var productId = req.params.id;
+              var product = JSON.parse(req.body.product);
+              var conditionjson = {"id" : productId};
+              var setJson = product;
+              log(conditionjson);
+              delete setJson['id'];
+              delete setJson['rating'];
+              delete setJson['reviews'];
+              dbConn.updateDocument(conditionjson,setJson,'organization-products',(function(respons){
+                   dbConn.updateDocument({"id":productId},{
+                      "brand": product.brand,
+                      "category" : product.category,
+                      "subcategory" : product.subcategory
+                   },'products',(function(prespons){}));
+
+                 res.send('OK');
+              }));
+          })
+          
+          
           
            app.post('/order/:id/update', function (req, res) {
               var orderid = req.params.id;
@@ -1169,7 +1324,8 @@ res.send(genres.path)
                    }
                    var shipp = {};
                    var d = new Date();
-                   var date = d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+                   var momtz = moment(d);
+                   var date = momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a');
                    if(req.body.status == 'A' )
                    {
                      shipp.mMessage= 'Order confirmed by seller';
@@ -1213,7 +1369,8 @@ res.send(genres.path)
                    setJson = {'shippings' : shippings};
                    setJson.status = status;
                    dbConn.updateDocument({id: orderid},setJson,'orders',function(respo){
-                            res.send('OK');
+                         notifyFollowers(orderid, 'Your order update', shipp.mMessage);
+                         res.send('OK');
                   });
                 } 
               }
@@ -1223,3 +1380,18 @@ res.send(genres.path)
             
             
           })
+          
+          function traceLog(msg) {
+              console.log(msg);
+          }
+          
+          function log(msg) {
+              console.log(msg);
+          }
+          
+          app.post('/testAddProduct', function (req, res) {
+            log(req.body);
+            res.send('ok');
+          });
+          
+          
