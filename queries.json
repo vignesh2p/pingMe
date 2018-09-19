@@ -1,0 +1,20 @@
+[{
+"name" : "Account related queries",
+"qa" :[
+    {"question":"How do I redeem a voucher code?","answer":"Here's how you can redeem your voucher:1. Visit https://www.flipkart.com/redeem-voucher 2. Log in to your Flipkart account 3. Go to 'My Rewards' section 4. Key in the voucher code and click 'Validate' Please keep the following points in mind while entering the voucher code:1. Enter the voucher code manually and do not copy-paste it 2. Ensure there are no spaces between characters"},
+    {"question":"If I request for a replacement, when will I get it?","answer":"Visit My Orders to check the status of your replacement.In most locations, the replacement item is delivered to you at the time of pick-up. In all other areas, the replacement is initiated after the originally delivered item is picked up. Please check the SMS & email we send you for your replacement request for more details."}
+    ]
+},{
+"name" : "Payment related queries",
+"qa" :[{"question":"How do I redeem a voucher code?","answer":"Here's how you can redeem your voucher:1. Visit https://www.flipkart.com/redeem-voucher 2. Log in to your Flipkart account 3. Go to 'My Rewards' section 4. Key in the voucher code and click 'Validate' Please keep the following points in mind while entering the voucher code:1. Enter the voucher code manually and do not copy-paste it 2. Ensure there are no spaces between characters"}]
+},{
+"name" : "Offer related queries",
+"qa" :[{"question":"How do I redeem a voucher code?","answer":"Here's how you can redeem your voucher:1. Visit https://www.flipkart.com/redeem-voucher 2. Log in to your Flipkart account 3. Go to 'My Rewards' section 4. Key in the voucher code and click 'Validate' Please keep the following points in mind while entering the voucher code:1. Enter the voucher code manually and do not copy-paste it 2. Ensure there are no spaces between characters"}]
+},{
+"name" : "Geobuy service queries",
+"qa" :[{"question":"How do I redeem a voucher code?","answer":"Here's how you can redeem your voucher:1. Visit https://www.flipkart.com/redeem-voucher 2. Log in to your Flipkart account 3. Go to 'My Rewards' section 4. Key in the voucher code and click 'Validate' Please keep the following points in mind while entering the voucher code:1. Enter the voucher code manually and do not copy-paste it 2. Ensure there are no spaces between characters"}]
+},{
+"name" : "Delivery related queries",
+"qa" :[{"question":"How do I redeem a voucher code?","answer":"Here's how you can redeem your voucher:1. Visit https://www.flipkart.com/redeem-voucher 2. Log in to your Flipkart account 3. Go to 'My Rewards' section 4. Key in the voucher code and click 'Validate' Please keep the following points in mind while entering the voucher code:1. Enter the voucher code manually and do not copy-paste it 2. Ensure there are no spaces between characters"}]
+}
+]
