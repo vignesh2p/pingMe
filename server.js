@@ -27,7 +27,7 @@ var distance = require('google-distance');
 var sleep = require('thread-sleep');
 var arraySort = require('array-sort');
 var moment = require('moment-timezone');
-
+const queries = require('./queries');
 app.use('/', routes);
 
 app.use(function (req, res, next) {
@@ -1124,8 +1124,7 @@ res.send(genres.path)
            
         })
         
-        
-        app.post('/saveOrder', function (req, res) {
+        app.post('/saveOrder2', function (req, res) {
             var orders = [];
             var date = new Date();
             var order = JSON.parse(req.body.order);
@@ -1146,7 +1145,7 @@ res.send(genres.path)
                 //orderItem.products =[];
                 orderItem.shippings =[];
                 orderItem.shippings.push(shiipp);
-                orderItem.id= uuid();
+               // orderItem.id= uuid();
                 orderItem.ordertime = date;
               //  orderItem.products.push(product);
                 orders[j] = orderItem;
@@ -1161,7 +1160,7 @@ res.send(genres.path)
                      // dbConn.updateDocument(conditionjson,setJson,'users',(function(respons){
                         res.send("OK")
                      // }));
-                    
+                    notifyFollowers(orderItem.id,"Order placed successfully", product.title+" order has been placed successfully", 'order' , orderItem.orderNo+'#'+product.id);
                   })); 
                 //  sleep(5000);
                 //  
@@ -1177,20 +1176,52 @@ res.send(genres.path)
             
         })
         
-        app.post('/getOrders', function (req, res) {
+        app.post('/saveOrder', function (req, res) {
+            var orders = [];
+            var date = new Date();
+            var order = JSON.parse(req.body.order);
+            Object.keys(order).forEach(function(key) {
+                  var suborder = JSON.parse(JSON.stringify(order[key])); 
+                  suborder.orgid = key;
+                  var momtz = moment(date);
+                  var shiipp= {
+                    "mMessage": "Order placed successfully",
+                    "mDate": momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a'),
+                    "timestamp": date
+                  };
+                  suborder.shippings =[];
+                  suborder.shippings.push(shiipp);
+                  suborder.ordertime = date;
+                  dbConn.insertDocuments([suborder],'orders',(function(response) {
+                      notifyFollowers(suborder.id,"Order placed successfully", " Order has been placed successfully", 'order' , suborder.id);
+                     
+                  })); 
+              })
+               res.send("OK");
+        });
+        
+        app.get('/orders', function (req, res) {
+           var url_parts = url.parse(req.url, true);
+           var query = url_parts.query;
             var conditionjson = {};
-            if(req.body.orgid)
-                conditionjson.orgid = req.body.orgid;
-            if(req.body.userid)
-                 conditionjson.userid = req.body.userid;
-            if(req.body.useremail)
-                 conditionjson.useremail = req.body.useremail;
-            if(req.body.status)
-                conditionjson.status =  { "$in":req.body.status.split(',')};
-            if(req.body.id)
-                conditionjson.id = req.body.id;
-            
-            dbConn.findDocuments(conditionjson,'orders',function(response){
+            if(query.orgid)
+                conditionjson.orgid = query.orgid;
+            if(query.userid)
+                 conditionjson.userid = query.userid;
+            if(query.useremail)
+                 conditionjson.useremail = query.useremail;
+            if(query.status)
+                conditionjson.status =  { "$in": query.status.split(',')};
+            if(query.id)
+                conditionjson.id = query.id;
+            console.log(conditionjson);
+            var aggregateJson ={};
+            aggregateJson.from = 'organization';
+            aggregateJson.localField = 'orgid';
+            aggregateJson.foreignField = 'orgid';
+            aggregateJson.as = 'orgDetails';
+            dbConn.findDocumentsByJoin( 'orders', aggregateJson, conditionjson ,function(response){
+           // dbConn.findDocuments(conditionjson,'orders',function(response){
               if(response.length > 0) {
                  var resp = arraySort(response, 'ordertime', {reverse: true});
                  res.send(resp);
@@ -1203,19 +1234,38 @@ res.send(genres.path)
         
         
          app.post('/notifyFollowers', function (req, res) {
-            notifyFollowers(req.body.orgid, req.body.subject, req.body.content)
+            notifyFollowers(req.body.orgid, req.body.subject, req.body.content,'ALL','')
             res.send('OK');
         })
         
-        function notifyFollowers(topic, subject, content) {
+        function notifyFollowers(topic, subject, content, link, linkids) {
           var msg = {
             notification : { title : subject,  body: content },
             topic : topic
           };
           fcm.sendPushNotification(msg);
+          insertNotification(msg, topic, link, linkids);
         }
         
-        
+        function insertNotification(notification, topic, link, linkids) {
+          var msg = notification;
+          var date =  new Date();
+          var topicA =[];
+          topicA[0] = topic;
+          var momtz = moment(date);
+          var dateT = momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a');
+          //msg.notification = notification;
+          msg.notifiedtime = date;
+          msg.gnotifiedtime = dateT;
+          msg.id = uuid();
+          msg.topic = topicA;
+          msg.link = link;
+          msg.linkId=[linkids];
+          dbConn.insertDocuments([msg],'notifications',(function(response){
+            log('inserted');
+            
+          }));
+        }
         
          app.get('/getDistance', function (req, res) {
               var url_parts = url.parse(req.url, true);
@@ -1262,7 +1312,15 @@ res.send(genres.path)
         
          app.get('/order/:id', function (req, res) {
               log(req.params);
-               dbConn.findDocuments(req.params,'orders',function(response){
+              
+              var aggregateJson ={};
+              aggregateJson.from = 'organization';
+              aggregateJson.localField = 'orgid';
+              aggregateJson.foreignField = 'orgid';
+              aggregateJson.as = 'orgDetails';
+              var qry ={id:req.params.id}
+              dbConn.findDocumentsByJoin( 'orders', aggregateJson, qry ,function(response){
+           //    dbConn.findDocuments(qry,'orders',function(response){
               if(response.length > 0) {
                  res.send(response[0]);
               } else
@@ -1306,7 +1364,16 @@ res.send(genres.path)
               }));
           })
           
-          
+          app.post('/payment/:orderNo/:suborder/update', function (req, res) {
+              var orderNo = req.params.orderNo;
+              var suborder = req.params.suborder;
+              var setJson = req.body;
+              dbConn.updateDocument({orderNo: orderNo, id : suborder},setJson,'orders',function(respo){
+                         notifyFollowers(req.params.suborder, 'Your order update', setJson.message,'order', orderNo+'#'+suborder);
+                         res.send('OK');
+              });
+            
+          });
           
            app.post('/order/:id/update', function (req, res) {
               var orderid = req.params.id;
@@ -1369,7 +1436,7 @@ res.send(genres.path)
                    setJson = {'shippings' : shippings};
                    setJson.status = status;
                    dbConn.updateDocument({id: orderid},setJson,'orders',function(respo){
-                         notifyFollowers(orderid, 'Your order update', shipp.mMessage);
+                         notifyFollowers(orderid, 'Your order update', shipp.mMessage,'order', order.orderNo+'#'+order.id);
                          res.send('OK');
                   });
                 } 
@@ -1380,6 +1447,25 @@ res.send(genres.path)
             
             
           })
+          
+          
+          app.get('/queries', function(req, res) {
+            res.send(queries);   
+          });
+          
+          app.post('/query', function(req, res) {
+            var date = new Date();
+            var momtz = moment(date);
+            var tm = momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a');
+            var query = req.body;
+            query.status ='1';
+            query.raisedTime = date;
+            query.graisedTime = tm;
+            query.id =uuid();
+            log(query);
+            insertDoc(query, 'customer-service-requests');
+            res.send('OK');   
+          });
           
           function traceLog(msg) {
               console.log(msg);
