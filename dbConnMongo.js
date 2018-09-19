@@ -20,8 +20,9 @@ function insertDocuments(insertjsonarry,documents, callback) {
 		// Get the documents collection
 		const collection = db.collection(documents);
 		// Insert some documents
+	//	collection.dropIndex('$_id');
 		collection.insertMany(insertjsonarry, function(err, result) {
-		assert.equal(err, null);
+		if(err){console.log(err)};
 		//console.log("Inserted 3 documents into the collection");
 		client.close();		
 		callback(result);
@@ -43,7 +44,54 @@ function findDocuments(conditionjson,documents, callback) {
 		const collection = db.collection(documents);
 			
 		// Find some documents
-		collection.find(conditionjson).toArray(function(err, docs) {
+		collection.find(conditionjson).sort({gpriority:-1}).toArray(function(err, docs) {
+			assert.equal(err, null);
+			//console.log("Found the following records");
+			//console.log(docs)
+			callback(docs);
+		});
+		client.close();
+		});
+    
+  }
+  
+  
+function findDistinctDocuments(distinctCol, conditionjson,documents, callback) {
+		
+		// Use connect method to connect to the server
+		MongoClient.connect(url, function(err, client) {
+		assert.equal(null, err);
+	//	console.log("Connected successfully to server");
+		
+		const db = client.db(dbName);
+		//  Get the documents collection
+		const collection = db.collection(documents);
+			
+		// Find some documents
+		collection.distinct(distinctCol, conditionjson, function(err, docs) {
+			assert.equal(err, null);
+			callback(docs);
+		});
+		client.close();
+		});
+    
+  }
+  
+  
+  
+function findDocumentsAndSort(conditionjson,documents, sortJson, callback) {
+		
+		// Use connect method to connect to the server
+		MongoClient.connect(url, function(err, client) {
+		assert.equal(null, err);
+	//	console.log("Connected successfully to server");
+		
+		const db = client.db(dbName);
+		//  Get the documents collection
+		const collection = db.collection(documents);
+			
+		// Find some documents
+		collection.find(conditionjson).sort(sortJson).toArray(function(err, docs) {
 			assert.equal(err, null);
 			//console.log("Found the following records");
 			//console.log(docs)
@@ -67,7 +115,7 @@ function findDocumentsByProject(conditionjson, projectJson, documents, callback)
 		const collection = db.collection(documents);
 			
 		// Find some documents
-		collection.find(conditionjson).project(projectJson).toArray(function(err, docs) {
+		collection.find(conditionjson).sort({gpriority:-1}).project(projectJson).toArray(function(err, docs) {
 			assert.equal(err, null);
 			callback(docs);
 		});
@@ -99,7 +147,7 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 	   {
 		  $match: conditionjson
 	   }
-	  ]).toArray(function(err, res) {
+	  ]).sort({gpriority:-1}).toArray(function(err, res) {
 	  if (err) { 
 	  	console.log(err);
 	  	throw err;}
@@ -187,5 +235,7 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 	findDocuments : findDocuments, 
 	findDocumentsByJoin : findDocumentsByJoin,
 	updatePushDocument : updatePushDocument,
-	findDocumentsByProject : findDocumentsByProject
+	findDocumentsByProject : findDocumentsByProject,
+	findDocumentsAndSort : findDocumentsAndSort,
+	findDistinctDocuments : findDistinctDocuments
 }
