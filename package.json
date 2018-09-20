@@ -12,7 +12,7 @@
     "assert": "1.4.1",
     "body-parser": "1.18.2",
     "express": "4.16.2",
-    "express-fileupload": "0.3.0",
+   
     "express-session": "1.15.6",
     "fcm-node": "^1.2.1",
     "firebase-admin": "^5.12.1",
