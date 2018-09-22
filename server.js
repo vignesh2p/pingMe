@@ -20,15 +20,15 @@ var shell = require('shelljs');
 //var passport     = require('passport');
 //var  LdapStrategy = require('passport-ldapauth');
 var bodyParser = require('body-parser');
-var routes = require('./imagefile');
+//var routes = require('./imagefile');
 var stringSimilarity = require('string-similarity');
 var url = require('url');
 var distance = require('google-distance');
-var sleep = require('thread-sleep');
+//var sleep = require('thread-sleep');
 var arraySort = require('array-sort');
 var moment = require('moment-timezone');
 const queries = require('./queries');
-app.use('/', routes);
+//app.use('/', routes);
 
 app.use(function (req, res, next) {
 
@@ -87,35 +87,11 @@ app.use(bodyParser.urlencoded({extended: false}));
 //So make sure you give your connection details..
 
  
-app.use('/image', routes);
+//app.use('/image', routes);
  
 //URL : http://localhost:3000/images/
 // To get all the images/files stored in MongoDB
-app.get('/images', function(req, res) {
-//calling the function from index.js class using routes object..
-routes.getImages(function(err, genres) {
-if (err) {
-throw err;
- 
-}
-res.json(genres);
- 
-});
-});
- 
-// URL : http://localhost:3000/images/(give you collectionID)
-// To get the single image/File using id from the MongoDB
-app.get('/images/:id', function(req, res) {
- 
-//calling the function from index.js class using routes object..
-routes.getImageById(req.params.id, function(err, genres) {
-if (err) {
-throw err;
-}
-//res.download(genres.path);
-res.send(genres.path)
-});
-});
+
 
   var server = app.listen(8080, function () {
   var host = server.address().address

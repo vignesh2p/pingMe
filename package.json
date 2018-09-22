@@ -3,18 +3,20 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "engines" : { "node" : ">=6.11.2" } ,
-"engineStrict" : true,
+  "engines": {
+    "node": ">=6.11.2"
+  },
+  "engineStrict": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "array-sort": "^1.0.0",
     "assert": "1.4.1",
     "body-parser": "1.18.2",
     "express": "4.16.2",
-   
     "express-session": "1.15.6",
     "fcm-node": "^1.2.1",
     "firebase-admin": "^5.12.1",
