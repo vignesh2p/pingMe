@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-//const fileUpload = require('express-fileupload');
+const fileUpload = require('express-fileupload');
 var dbConn = require('./dbConnMongo');
 var fcm = require('./fcmService.js');
 var mailService = require('./mailService')
@@ -20,15 +20,26 @@ var shell = require('shelljs');
 //var passport     = require('passport');
 //var  LdapStrategy = require('passport-ldapauth');
 var bodyParser = require('body-parser');
-//var routes = require('./imagefile');
+var routes = require('./imagefile');
 var stringSimilarity = require('string-similarity');
 var url = require('url');
 var distance = require('google-distance');
-//var sleep = require('thread-sleep');
+var sleep = require('thread-sleep');
 var arraySort = require('array-sort');
 var moment = require('moment-timezone');
 const queries = require('./queries');
-//app.use('/', routes);
+var fs = require('fs');
+var NodeGeocoder = require('node-geocoder');
+var options = {
+  provider: 'google',
+  // Optional depending on the providers
+  httpAdapter: 'https', // Default
+  apiKey: 'AIzaSyDB8Nx_3MpgcS27EbmC43rZchWUI0JzJTY', // for Mapquest, OpenCage, Google Premier
+  formatter: null         // 'gpx', 'string', ...
+};
+ 
+var geocoder = NodeGeocoder(options);
+app.use('/', routes);
 
 app.use(function (req, res, next) {
 
@@ -87,17 +98,50 @@ app.use(bodyParser.urlencoded({extended: false}));
 //So make sure you give your connection details..
 
  
-//app.use('/image', routes);
+app.use('/image', routes);
  
 //URL : http://localhost:3000/images/
 // To get all the images/files stored in MongoDB
+app.get('/images', function(req, res) {
+//calling the function from index.js class using routes object..
+routes.getImages(function(err, genres) {
+if (err) {
+throw err;
+ 
+}
+res.json(genres);
+ 
+});
+});
+ 
+// URL : http://localhost:3000/images/(give you collectionID)
+// To get the single image/File using id from the MongoDB
+app.get('/images/:id', function(req, res) {
+ 
+//calling the function from index.js class using routes object..
+routes.getImageById(req.params.id, function(err, genres) {
+if (err) {
+throw err;
+}
+//res.download(genres.path);
+res.send(genres.path)
+});
+});
 
+dbConn.connectDB(function (err, client) {
+   if(err){
+     log('Error in DB Connection');
+     log(err);
+   } else {
+      var server = app.listen(8080, function () {
+        var host = server.address().address
+        var port = server.address().port
+        log("Example app listening at http:"+host+":"+port)
+      })
+   }
+});
 
-  var server = app.listen(8080, function () {
-  var host = server.address().address
-  var port = server.address().port
-  log("Example app listening at http:"+host+":"+port)
- })
+  
 
   app.post('/login', function(req, res) {
     traceLog([req.body]);
@@ -188,35 +232,45 @@ app.use(bodyParser.urlencoded({extended: false}));
           conditionjson.msg="Organization email already registered";
           res.send(conditionjson); 
         } else {
-            var orgJson = req.body;
-            orgJson.orgLat= parseFloat(req.body.orgLat);
-            orgJson.orgLon= parseFloat(req.body.orgLon);
-            dbConn.insertDocuments([orgJson],'organization',(function(response){
-            traceLog(response);
-            if(response.result != undefined) {
-              var toEmails = 'viki19nesh@gmail.com';      
-              var subject = 'Please confirm store registration with Codette';
-              var content = 'Dear Team, \n A New Busisness ('+req.body.orgemail+','+req.body.orgphoneno+') has been registered kindly verify it. \nRegards \nCodette';
-              var fromMail = '"GeoBuy"<sales@codette.in>'
-               var options  = {
-                 from: fromMail, // sender address
-                // fromname:   'admin@codette.in',
-                 to : toEmails, // comma separated list of receivers
-                 subject: subject,// Subject line
-                 text: content// plaintext body
-               }
-               traceLog(req.body);
-               mailService.sendmail(options);
-
-              var conditionjson = {"code" : "200 OK", "msg" : "Registered Sucessfuly"}
-              res.send(conditionjson);
-            }  else{
-              var conditionjson = {}
-              conditionjson.code="412 Precondition Failed";
-              conditionjson.msg="Error in registering Organization";
-              res.send(conditionjson); 
-            }
-          }));
+             var orgJson = req.body;
+             orgJson.orgLat= parseFloat(req.body.orgLat);
+             orgJson.orgLon= parseFloat(req.body.orgLon);
+             getAddress(orgJson.orgLat, orgJson.orgLon, function(address){
+                 orgJson.address = address;
+                 dbConn.insertDocuments([orgJson],'organization',(function(response){
+                 traceLog(response);
+                  if(response.result != undefined) {
+                      
+                      
+                      var toEmails = 'viki19nesh@gmail.com';      
+                      var subject = 'Please confirm store registration with Geobuy';
+                      var content = 'Dear Team, \n A New Business ('+req.body.orgemail+','+req.body.orgphoneno+') has been registered kindly verify it. \nRegards \nCodette';
+                      var fromMail = '"GeoBuy"<sales@codette.in>'
+                       var options  = {
+                         from: fromMail, // sender address
+                        // fromname:   'admin@codette.in',
+                         to : toEmails, // comma separated list of receivers
+                         subject: subject,// Subject line
+                         text: content// plaintext body
+                       }
+                       traceLog(req.body);
+                       mailService.sendmail(options);
+        
+                      var conditionjson = {"code" : "200 OK", "msg" : "Registered Sucessfuly"}
+                      res.send(conditionjson);
+                   }  else{
+                      var conditionjson = {}
+                      conditionjson.code="412 Precondition Failed";
+                      conditionjson.msg="Error in registering Organization";
+                      res.send(conditionjson); 
+                    }
+                }));
+            })
+            .catch(function(err) {
+              console.log(err);
+            });
+             
+            
         }
 
 
@@ -353,13 +407,19 @@ app.use(bodyParser.urlencoded({extended: false}));
        })
        
        
-      app.post('/storesByPosition', function (req, res) {
+      app.get('/sellers-products', function (req, res) {
         //traceLog(req.body);
+         traceLog(req);
         var param = {}
-        param.maxlattitude= parseFloat(req.body.maxlattitude);
-        param.minlattitude= parseFloat(req.body.minlattitude);
-        param.maxlongitude= parseFloat(req.body.maxlongitude);
-        param.minlongitude= parseFloat(req.body.minlongitude);
+        if(req.query.maxlattitude)
+          param.maxlattitude= parseFloat(req.query.maxlattitude);
+        if(req.query.minlattitude)
+          param.minlattitude= parseFloat(req.query.minlattitude);
+        if(req.query.maxlongitude)
+          param.maxlongitude= parseFloat(req.query.maxlongitude);
+        if(req.query.minlongitude)
+          param.minlongitude= parseFloat(req.query.minlongitude);
+        
         traceLog(param);
         var conditionJson = {"orgLat":{$lt:param.maxlattitude, $gt:param.minlattitude },"orgLon":{$lt:param.maxlongitude, $gt:param.minlongitude} };
         var aggregateJson ={};
@@ -450,7 +510,7 @@ app.use(bodyParser.urlencoded({extended: false}));
                           log(response);
                           res.send(response);
                       } else {
-                        res.send([]);
+                          res.send([]);
                       }
                     })); 
               }
@@ -476,6 +536,22 @@ app.use(bodyParser.urlencoded({extended: false}));
         
         })   
 
+
+        app.get('/category/:id', function (req, res) {
+          var aggregateJson ={};
+          aggregateJson.from = 'sub-category';
+          aggregateJson.localField = 'id';
+          aggregateJson.foreignField = 'category';
+          aggregateJson.as = 'subcategory';
+          dbConn.findDocumentsByJoin('category',aggregateJson, {"id" : req.params.id}, (function (response) {
+             if(response.length > 0)
+               res.send(response[0]);
+             else
+                res.send({});
+           }));  
+        
+        }) 
+        
         app.get('/trendings', function (req, res) {
             var aggregateJson ={};
             aggregateJson.from = 'organization-products';
@@ -494,8 +570,8 @@ app.use(bodyParser.urlencoded({extended: false}));
           
           })
 
-            app.post('/productsSearch', function (req, res) {
-            var searchKey = req.body.searchkey;
+            app.get('/products-autocomplete', function (req, res) {
+            var searchKey = req.query.searchkey;
             var param = {}
             var aggregateJson ={};
             aggregateJson.from = 'organization-products';
@@ -504,12 +580,12 @@ app.use(bodyParser.urlencoded({extended: false}));
             aggregateJson.as = 'productDetails';
             var conditionjson = { };
             conditionjson.text = {$regex:searchKey,$options:"$i"}
-            if(req.body.maxlattitude)
+            if(req.query.maxlattitude)
             {
-                param.maxlattitude= parseFloat(req.body.maxlattitude);
-                param.minlattitude= parseFloat(req.body.minlattitude);
-                param.maxlongitude= parseFloat(req.body.maxlongitude);
-                param.minlongitude= parseFloat(req.body.minlongitude);
+                param.maxlattitude= parseFloat(req.query.maxlattitude);
+                param.minlattitude= parseFloat(req.query.minlattitude);
+                param.maxlongitude= parseFloat(req.query.maxlongitude);
+                param.minlongitude= parseFloat(req.query.minlongitude);
                // console.log(param);
                 dbConn.findDocuments(
                                   {
@@ -559,23 +635,13 @@ app.use(bodyParser.urlencoded({extended: false}));
             } else {
               
               log(conditionjson);
-             /* dbConn.findDocumentsByJoin( 'geobuy-search', aggregateJson, conditionjson ,function(resp){
-                       traceLog(resp)
-                    if(resp.length > 0) {
-                        res.send(resp);
-                    } else {
-                      res.send([]);
-                    }
-                    
-                    });*/
-                    
-                    dbConn.findDocuments(conditionjson,  'geobuy-search', function(resp){
-                          if(resp.length > 0) {
-                              res.send(resp);
-                          } else {
-                            res.send([]);
-                          }
-                     });
+              dbConn.findDocuments(conditionjson,  'geobuy-search', function(resp){
+                  if(resp.length > 0)
+                      res.send(resp);
+                  else
+                    res.send([]);
+                          
+              });
             }
            
             })
@@ -612,23 +678,54 @@ app.use(bodyParser.urlencoded({extended: false}));
               
              // findDocumentsByJoin('organization-products', aggregateJson, conditionjson, function(res){console.log(res);});
 
-               app.post('/productDetails', function (req, res) {
-                  traceLog(req.body);
+               app.get('/productDetails', function (req, res) {
+                  traceLog(req.query);
+                 if(!req.query.id) {
+                   res.send('Invalid Param');
+                 } else {
                   var aggregateJson ={};
                   aggregateJson.from = 'organization-products';
-                  aggregateJson.localField = 'id';
+                  aggregateJson.localField = 'masterid';
                   aggregateJson.foreignField = 'masterid';
                   aggregateJson.as = 'productDetails';
                   var conditionjson = {};
-                  if(req.body.id)
-                    conditionjson.id = req.body.id;
-                  if(req.body.barcode)
-                    conditionjson.ean = req.body.barcode;
-                  dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,function(response){
-                  if(response){
-                      res.send(response[0]);
-                  }
+                  if(req.query.id)
+                    conditionjson.id = req.query.id;
+                  if(req.query.barcode)
+                    conditionjson.ean = req.query.barcode;
+                    log(aggregateJson);
+                    log(conditionjson);
+                  dbConn.findDocumentsByJoin( 'organization-products', aggregateJson, conditionjson ,function(response){
+                    if(response && response.length > 0){
+                      log(response);
+                        var product = response[0];
+                        log(product);
+                        if(product && req.query.lat && req.query.lon) {
+                          var productDetails = product.productDetails;
+                            for(var j=0; j < productDetails.length; j++) {
+                              var lat = productDetails[j].lat;
+                              var lon = productDetails[j].lon;
+                              
+                              if(lat && lon) {
+                                  productDetails[j].distance = calculateDistance(req.query.lat, req.query.lon, lat, lon);
+                              }
+                              
+                              if(j == productDetails.length-1) {
+                                  productDetails = arraySort(productDetails, 'distance', {reverse: true});
+                                  product.productDetails = productDetails;
+                                  res.send(product);
+                              }
+                            }
+                        } else {
+                            log(product);
+                            res.send(product);
+                        }
+                    } else {
+                      log('***********');
+                      res.send({});
+                    }
                   }); 
+                 }
               })
               
               
@@ -657,10 +754,13 @@ app.use(bodyParser.urlencoded({extended: false}));
                     if(response.length > 0) {
                       if(response[0].reviews != undefined){
                          for(var i=0; i< response[0].reviews.length; i++) {
-                           rat = rat + parseFloat(response[0].reviews[i].ratings);
+                           if(response[0].reviews[i].ratings)
+                              rat = rat + parseFloat(response[0].reviews[i].ratings);
+                           else
+                              rat = rat + 0;
                            if(i == response[0].reviews.length-1) {
                               rat = rat / response[0].reviews.length;
-                               var setjson = {"rating": rat}
+                               var setjson = {"rating": parseFloat(rat).toFixed(1)}
                                traceLog(setjson);
                                dbConn.updateDocument(conditionjson,setjson,table,(function(response){
                                   traceLog(response);
@@ -669,7 +769,7 @@ app.use(bodyParser.urlencoded({extended: false}));
                            }
                          }
                       } else {
-                        var setjson = {"rating": reviewJson.ratings};
+                        var setjson = {"rating": parseFloat(reviewJson.ratings).toFixed(1)};
                          traceLog(setjson);
                          dbConn.updateDocument(conditionjson,setjson,table,(function(response){
                             traceLog(response);
@@ -684,26 +784,26 @@ app.use(bodyParser.urlencoded({extended: false}));
             })
             
             
-              app.post('/getProductsByCategory', function (req, res) {
-                  log(req.body);
+              app.get('/getProductsByCategory', function (req, res) {
+                 // log(req);
                   var aggregateJson ={};
                   aggregateJson.from = 'organization-products';
                   aggregateJson.localField = 'id';
                   aggregateJson.foreignField = 'masterid';
                   aggregateJson.as = 'productDetails';
                   var conditionjson = { };
-                  if(req.body.category) 
-                    conditionjson.category = req.body.category;
+                  if(req.query.category) 
+                    conditionjson.category = req.query.category;
                   
-                  if(req.body.subcategory)
-                    conditionjson.subcategory= req.body.subcategory;
+                  if(req.query.subcategory)
+                    conditionjson.subcategory= req.query.subcategory;
                     
-                  if(req.body.brand)
-                    conditionjson.brand = { "$in": req.body.brand.split(',') };
+                  if(req.query.brand)
+                    conditionjson.brand = { "$in": req.query.brand.split(',') };
                   
                   
-                  if(req.body.productIds)
-                     conditionjson.id = { "$in": req.body.productIds }
+                  if(req.query.productIds)
+                     conditionjson.id = { "$in": req.query.productIds }
                   traceLog(conditionjson);
                   
                   dbConn.findDocumentsByJoin( 'products', aggregateJson, conditionjson ,(function(response){
@@ -866,16 +966,24 @@ app.use(bodyParser.urlencoded({extended: false}));
         })
         
         app.get('/org/:orgid', function (req, res) {
-        var conditionJson = {"orgid": req.params.orgid };
+          traceLog(req);
+          var conditionJson = {};
+        if(req.params.orgid)
+          conditionJson.orgid = req.params.orgid;
+        else if(req.query.orgid)
+          conditionJson.orgid = req.query.orgid;
         var aggregateJson ={};
         aggregateJson.from = 'organization-products';
         aggregateJson.localField = 'orgid';
         aggregateJson.foreignField = 'orgid';
         aggregateJson.as = 'products';
+        traceLog(conditionJson);
         dbConn.findDocumentsByJoin( 'organization', aggregateJson, conditionJson ,function(resp){
             traceLog(resp)
             if(resp.length > 0) {
-                  res.send(resp[0]);
+                  var org = resp[0];
+                  delete org['password'];
+                  res.send(org);
             } else {
                   res.send({});
             }
@@ -1254,7 +1362,7 @@ app.use(bodyParser.urlencoded({extended: false}));
                     if(response.length > 0) {
                         var org = response[0];
                          traceLog(org);
-                         distance.get(
+                         /*distance.get(
                           {
                             index: 1,
                             origin: org.orgLat+','+org.orgLon ,
@@ -1264,11 +1372,11 @@ app.use(bodyParser.urlencoded({extended: false}));
                             if (err) return console.log(err);
                             log(data);
                             res.send(data);
-                          });
+                          });*/
                     }
                 }))
               } else {
-                    distance.get(
+                    /*distance.get(
                     {
                       index: 1,
                       origin: query.lat1+','+query.lon1 ,
@@ -1278,7 +1386,7 @@ app.use(bodyParser.urlencoded({extended: false}));
                       if (err) return console.log(err);
                       log(data);
                       res.send(data);
-                    });
+                    });*/
               }
               
                     
@@ -1343,12 +1451,26 @@ app.use(bodyParser.urlencoded({extended: false}));
           app.post('/payment/:orderNo/:suborder/update', function (req, res) {
               var orderNo = req.params.orderNo;
               var suborder = req.params.suborder;
+              var msg = req.body.msg;
               var setJson = req.body;
+              delete setJson['message'];
+              var d = new Date();
+              var momtz = moment(d);
+              var date = momtz.tz('Asia/Kolkata').format('dddd, MMMM Do YYYY, h:mm a');
               dbConn.updateDocument({orderNo: orderNo, id : suborder},setJson,'orders',function(respo){
                          notifyFollowers(req.params.suborder, 'Your order update', setJson.message,'order', orderNo+'#'+suborder);
                          res.send('OK');
               });
-            
+              dbConn.updatePushDocument({orderNo: orderNo, id : suborder},
+                {       $push: { shippings : {
+                        "mMessage": msg,
+                        "mDate": date,
+                        "timestamp": d } 
+                }
+                  
+                },'orders',function(respo){
+                      
+              });
           });
           
            app.post('/order/:id/update', function (req, res) {
@@ -1389,6 +1511,12 @@ app.use(bodyParser.urlencoded({extended: false}));
                      shipp.timestamp = d;
                      shippings.push(shipp);
                      status = req.body.status;
+                   }  else if(req.body.status =='C') {
+                     shipp.mMessage= 'Order item has been cancelled, if paid your amount will be refunded in 2-3 working days';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status = req.body.status;
                    } else if(req.body.status =='D') {
                      shipp.mMessage= 'Delivered';
                      shipp.mDate = date;
@@ -1404,6 +1532,18 @@ app.use(bodyParser.urlencoded({extended: false}));
                      status =  req.body.status;
                    } else if(req.body.status =='RP') {
                      shipp.mMessage= 'Ready for pickup';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status =  req.body.status;
+                   } else if(req.body.status =='RR') {
+                     shipp.mMessage= 'Requested for return';
+                     shipp.mDate = date;
+                     shipp.timestamp = d;
+                     shippings.push(shipp);
+                     status =  req.body.status;
+                   }else if(req.body.status =='RE') {
+                     shipp.mMessage= 'Order item returned';
                      shipp.mDate = date;
                      shipp.timestamp = d;
                      shippings.push(shipp);
@@ -1443,12 +1583,106 @@ app.use(bodyParser.urlencoded({extended: false}));
             res.send('OK');   
           });
           
+          
+          app.get('/locationByCat', function(req, res) {
+            var category = req.query.category;
+            var subcategory = req.query.subcategory;
+            var lat = req.query.lat;
+            var lon = req.query.lon;
+            var params = {};
+            var aggregateJson={};
+            aggregateJson.from = 'organization';
+            aggregateJson.localField = 'orgid';
+            aggregateJson.foreignField = 'orgid';
+            aggregateJson.as = 'org';
+            var unwindJson ={path: "$org", includeArrayIndex: "arrayIndex"};
+            var projectJson = {"orgid":1, "category" :1, "org.address":1};
+            if(lat && lon) {
+                    console.log(lat+"    "+lon);
+                    getAddress(lat, lon, function (address) {
+                        var city = address.city;
+                        //{awards: }
+                        if(subcategory)
+                            params = { 'org.address.city':city,'subcategory': subcategory};
+                        else if(category)
+                            params = { 'org.address.city':city, 'category': category};
+                            
+                        
+                        try {
+                          dbConn.findDocumentsByJoinAndUnwind('organization-products', aggregateJson, params ,unwindJson , projectJson, function(response) {
+                               console.log(response);
+                               res.send(removeDuplicates(response));
+                          })
+                        } catch(err) {
+                          console.log(err);
+                        }
+                    });
+            } else {
+                dbConn.findDocumentsByProject( params , {}, 'products', (function(response){
+                  if(response.length > 0) {
+                      res.send(response);
+                  } else
+                     res.send([]);
+                  })); 
+                /*dbConn.findDocumentsByJoin( 'organization-products', aggregateJson, params ,function(response){
+                       console.log(response);
+                       res.send(response);
+                });*/
+            }
+            
+                
+          });
+          
+          function removeDuplicates(myArr) {
+              return myArr.filter((obj, pos, arr) => {
+                  return arr.map(mapObj => mapObj.org.address.street).indexOf(obj.org.address.street) === pos;
+              });
+          }
+
+          
+          
+          function getAddress(lat, lon, sucessfunc) {
+              var address= {};
+              geocoder.reverse({lat:lat, lon:lon})
+              .then(function(resp) {
+                   console.log(resp);
+                   address.lat = lat;
+                   address.lon = lon;
+                   address.formattedAddress = resp[0].formattedAddress;
+                   address.googlePlaceId = resp[0].googlePlaceId;
+                   if(resp[0].streetName) {
+                      address.street = resp[0].streetName;
+                   } else {
+                     address.street = resp[0].extra.neighborhood;
+                   }
+                   address.pincode = resp[0].zipcode;
+                   if(resp[0].administrativeLevels.level2long)
+                      address.city = resp[0].administrativeLevels.level2long;
+                   else
+                      address.city = resp[0].city;
+                   address.state = resp[0].administrativeLevels.level1long;
+                   address.country = resp[0].country;
+                   sucessfunc(address);
+              });  
+          }
+          
+          app.get('/getAddress', function(req, res) {
+              var lat = req.query.lat;
+              var lon = req.query.lon;
+              getAddress(lat, lon, function(address){
+                res.send(address);
+              })
+          });
+          
+          
           function traceLog(msg) {
-              console.log(msg);
+              //console.log('*****************************');
+             // console.log(msg);
+              //console.log('-----------------------------');
           }
           
           function log(msg) {
-              console.log(msg);
+              //console.log(msg);
           }
           
           app.post('/testAddProduct', function (req, res) {
@@ -1456,4 +1690,27 @@ app.use(bodyParser.urlencoded({extended: false}));
             res.send('ok');
           });
           
+          function isNotNull(val){
+            if(val){
+              return true;
+            } else
+              return false;
+          }
           
+          
+          
+function calculateDistance(lat1, lon1, lat2, lon2, unit) {
+	  var radlat1 = Math.PI * lat1/180
+	  var radlat2 = Math.PI * lat2/180
+	  var radlon1 = Math.PI * lon1/180
+	  var radlon2 = Math.PI * lon2/180
+	  var theta = lon1-lon2
+	  var radtheta = Math.PI * theta/180
+	  var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+	  dist = Math.acos(dist)
+	  dist = dist * 180/Math.PI
+	  dist = dist * 60 * 1.1515
+	  if (unit=="K") { dist = dist * 1.609344 }
+	  if (unit=="N") { dist = dist * 0.8684 }
+	  return parseFloat(dist).toFixed(1);
+}
