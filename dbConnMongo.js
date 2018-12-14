@@ -3,20 +3,34 @@
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 const dbconfig = require('./dbconfig');
-var mongoose = require('mongoose');
+//var mongoose = require('mongoose');
  
 // Connection URL
 const url = dbconfig.url;
-mongoose.connect(url);
+//mongoose.connect(url);
 // Database Name
 const dbName = dbconfig.name;
+var Mclient;
+
+function connectDB(callback){
+	
+	MongoClient.connect(url, function(err, client) {
+		//assert.equal(null, err);
+		console.log("Connected successfully to DB");
+		Mclient = client;
+		callback(err, client);
+	});
+	
+}
+
+
 
 function insertDocuments(insertjsonarry,documents, callback) {
-	MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
-		console.log("Connected successfully to server");
+//	MongoClient.connect(url, function(err, client) {
+//		assert.equal(null, err);
+	//	console.log("Connected successfully to server");
 	   
-			const db = client.db(dbName);	  
+			const db = Mclient.db(dbName);	  
 		// Get the documents collection
 		const collection = db.collection(documents);
 		// Insert some documents
@@ -24,22 +38,22 @@ function insertDocuments(insertjsonarry,documents, callback) {
 		collection.insertMany(insertjsonarry, function(err, result) {
 		if(err){console.log(err)};
 		//console.log("Inserted 3 documents into the collection");
-		client.close();		
+//		client.close();		
 		callback(result);
 		});
-		client.close();		
-	});
+//		client.close();		
+//	});
   }
 
 
 function findDocuments(conditionjson,documents, callback) {
 		
 		// Use connect method to connect to the server
-		MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
+	//	MongoClient.connect(url, function(err, client) {
+	//	assert.equal(null, err);
 	//	console.log("Connected successfully to server");
 		
-		const db = client.db(dbName);
+		const db = Mclient.db(dbName);
 		//  Get the documents collection
 		const collection = db.collection(documents);
 			
@@ -50,8 +64,8 @@ function findDocuments(conditionjson,documents, callback) {
 			//console.log(docs)
 			callback(docs);
 		});
-		client.close();
-		});
+//		client.close();
+	//	});
     
   }
   
@@ -59,11 +73,11 @@ function findDocuments(conditionjson,documents, callback) {
 function findDistinctDocuments(distinctCol, conditionjson,documents, callback) {
 		
 		// Use connect method to connect to the server
-		MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
+	//	MongoClient.connect(url, function(err, client) {
+//		assert.equal(null, err);
 	//	console.log("Connected successfully to server");
 		
-		const db = client.db(dbName);
+		const db = Mclient.db(dbName);
 		//  Get the documents collection
 		const collection = db.collection(documents);
 			
@@ -72,8 +86,8 @@ function findDistinctDocuments(distinctCol, conditionjson,documents, callback) {
 			assert.equal(err, null);
 			callback(docs);
 		});
-		client.close();
-		});
+	//	client.close();
+		//});
     
   }
   
@@ -82,11 +96,11 @@ function findDistinctDocuments(distinctCol, conditionjson,documents, callback) {
 function findDocumentsAndSort(conditionjson,documents, sortJson, callback) {
 		
 		// Use connect method to connect to the server
-		MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
+	//	MongoClient.connect(url, function(err, client) {
+	//	assert.equal(null, err);
 	//	console.log("Connected successfully to server");
 		
-		const db = client.db(dbName);
+		const db = Mclient.db(dbName);
 		//  Get the documents collection
 		const collection = db.collection(documents);
 			
@@ -97,8 +111,8 @@ function findDocumentsAndSort(conditionjson,documents, sortJson, callback) {
 			//console.log(docs)
 			callback(docs);
 		});
-		client.close();
-		});
+	//	client.close();
+	//	});
     
   }
 
@@ -106,11 +120,11 @@ function findDocumentsAndSort(conditionjson,documents, sortJson, callback) {
 function findDocumentsByProject(conditionjson, projectJson, documents, callback) {
 		
 		// Use connect method to connect to the server
-		MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
-		console.log("Connected successfully to server");
+	//	MongoClient.connect(url, function(err, client) {
+	//	assert.equal(null, err);
+	//	console.log("Connected successfully to server");
 		
-		const db = client.db(dbName);
+		const db = Mclient.db(dbName);
 		//  Get the documents collection
 		const collection = db.collection(documents);
 			
@@ -120,8 +134,8 @@ function findDocumentsByProject(conditionjson, projectJson, documents, callback)
 			callback(docs);
 		});
 
-		client.close();
-		});
+	//	client.close();
+	//	});
     
   }
 
@@ -130,10 +144,10 @@ function findDocumentsByProject(conditionjson, projectJson, documents, callback)
 function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 		
 	// Use connect method to connect to the server
-	MongoClient.connect(url, function(err, client) {
-	assert.equal(null, err);
-	console.log("Connected successfully to server");
-	const db = client.db(dbName);
+//	MongoClient.connect(url, function(err, client) {
+//	assert.equal(null, err);
+//	console.log("Connected successfully to server");
+	const db = Mclient.db(dbName);
 	const collection = db.collection(document);
 	collection.aggregate([
 	  { $lookup:
@@ -153,19 +167,19 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 	  	throw err;}
 	  callback(res);
 	});
-	client.close();
-	});
+//	client.close();
+//	});
 
 }
 
   
   function updateDocument(docidJson,setJson,documents, callback) {
 		// Use connect method to connect to the server
-	MongoClient.connect(url, function(err, client) {
-		assert.equal(null, err);
-		console.log("Connected successfully to server");
+//	MongoClient.connect(url, function(err, client) {
+	//	assert.equal(null, err);
+	//	console.log("Connected successfully to server");
 	
-		const db = client.db(dbName);
+		const db = Mclient.db(dbName);
 	
 		// Get the documents collection
 		const collection = db.collection(documents);
@@ -174,18 +188,18 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 			if (err) throw err;
 			console.log(res.result.nModified + " document(s) updated");
 			callback(res.result);
-			client.close();
+			//client.close();
 		});  
-  });
+  //});
 }
 
 function updatePushDocument(queryJson,pushJson,documents, callback) {
 	// Use connect method to connect to the server
-MongoClient.connect(url, function(err, client) {
+//MongoClient.connect(url, function(err, client) {
 //	assert.equal(null, err);
-	console.log("Connected successfully to server");
+//	console.log("Connected successfully to server");
 
-	const db = client.db(dbName);
+	const db = Mclient.db(dbName);
 
 	// Get the documents collection
 	const collection = db.collection(documents);
@@ -194,19 +208,19 @@ MongoClient.connect(url, function(err, client) {
 		if (err) throw err;
 		console.log(res.result.nModified + " document(s) updated");
 		callback(res.result);
-		client.close();
+	//	client.close();
 	});  
-});
+//});
 }
 
 
 function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 		
 	// Use connect method to connect to the server
-	MongoClient.connect(url, function(err, client) {
-	assert.equal(null, err);
-	console.log("Connected successfully to server");
-	const db = client.db(dbName);
+//	MongoClient.connect(url, function(err, client) {
+	//assert.equal(null, err);
+//	console.log("Connected successfully to server");
+	const db = Mclient.db(dbName);
 	const collection = db.collection(document);
 	collection.aggregate([
 	  { $lookup:
@@ -217,19 +231,79 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 		   as: aggregateJson.as
 		 }
 	   },
-   {
-      $match: conditionjson
-   }
+	   {
+	      $match: conditionjson
+	   }
 	  ]).toArray(function(err, res) {
 	  if (err) throw err;
 	  callback(res);
 	});
-	client.close();
-	});
+//	client.close();
+//	});
+
+}
+
+function findDocumentsByJoinAndUnwind(document, aggregateJson, conditionjson, unwindJson, projectJson, callback) {
+		
+	// Use connect method to connect to the server
+//	MongoClient.connect(url, function(err, client) {
+	//assert.equal(null, err);
+//	console.log("Connected successfully to server");
+	const db = Mclient.db(dbName);
+	const collection = db.collection(document);
+	if(projectJson){
+		collection.aggregate([
+		  { $lookup:
+			 {
+			   from: aggregateJson.from,
+			   localField: aggregateJson.localField,
+			   foreignField: aggregateJson.foreignField,
+			   as: aggregateJson.as
+			 }
+		   },
+		   {
+		      $unwind: unwindJson
+			},
+		   { $project: projectJson },
+		   {
+		      $match: conditionjson
+		   }
+		  ]).toArray(function(err, res) {
+			  if (err) throw err;
+			  callback(res);
+			});
+		
+	} else {
+		collection.aggregate([
+		  { $lookup:
+			 {
+			   from: aggregateJson.from,
+			   localField: aggregateJson.localField,
+			   foreignField: aggregateJson.foreignField,
+			   as: aggregateJson.as
+			 }
+		   },
+		   {
+		      $unwind: unwindJson
+			},
+		   {
+		      $match: conditionjson
+		   }
+		  ]).toArray(function(err, res) {
+			  if (err) throw err;
+			  callback(res);
+			});
+		
+	}
+	
+	
+//	client.close();
+//	});
 
 }
 
   module.exports={
+  	connectDB : connectDB,
 	insertDocuments : insertDocuments,
 	updateDocument : updateDocument,
 	findDocuments : findDocuments, 
@@ -237,5 +311,6 @@ function findDocumentsByJoin(document, aggregateJson, conditionjson, callback) {
 	updatePushDocument : updatePushDocument,
 	findDocumentsByProject : findDocumentsByProject,
 	findDocumentsAndSort : findDocumentsAndSort,
-	findDistinctDocuments : findDistinctDocuments
+	findDistinctDocuments : findDistinctDocuments,
+	findDocumentsByJoinAndUnwind : findDocumentsByJoinAndUnwind
 }
